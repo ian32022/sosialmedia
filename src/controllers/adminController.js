@@ -1,53 +1,49 @@
 const { pool } = require('../config/database');
 const { success, error, paginate } = require('../utils/response');
 
-// ─── DASHBOARD STATISTIK ──────────────────────────────────────
 const getDashboard = async (req, res) => {
   try {
-    const [[stats]] = await pool.query(`
+    const stats = await pool.query(`
       SELECT
-        (SELECT COUNT(*) FROM users WHERE is_banned = 0) AS total_users,
-        (SELECT COUNT(*) FROM users WHERE role = 'moderator') AS total_moderators,
-        (SELECT COUNT(*) FROM posts WHERE status = 'active') AS total_posts,
-        (SELECT COUNT(*) FROM comments WHERE status = 'active') AS total_comments,
-        (SELECT COUNT(*) FROM likes) AS total_likes,
-        (SELECT COUNT(*) FROM reports WHERE status = 'pending') AS pending_reports,
-        (SELECT COUNT(*) FROM users WHERE DATE(created_at) = CURDATE()) AS new_users_today,
-        (SELECT COUNT(*) FROM posts WHERE DATE(created_at) = CURDATE()) AS new_posts_today
+        (SELECT COUNT(*)::int FROM users WHERE is_banned = FALSE) AS total_users,
+        (SELECT COUNT(*)::int FROM users WHERE role = 'moderator') AS total_moderators,
+        (SELECT COUNT(*)::int FROM posts WHERE status = 'active') AS total_posts,
+        (SELECT COUNT(*)::int FROM comments WHERE status = 'active') AS total_comments,
+        (SELECT COUNT(*)::int FROM likes) AS total_likes,
+        (SELECT COUNT(*)::int FROM reports WHERE status = 'pending') AS pending_reports,
+        (SELECT COUNT(*)::int FROM users WHERE DATE(created_at) = CURRENT_DATE) AS new_users_today,
+        (SELECT COUNT(*)::int FROM posts WHERE DATE(created_at) = CURRENT_DATE) AS new_posts_today
     `);
 
-    // Aktivitas 7 hari terakhir
-    const [activity] = await pool.query(`
-      SELECT DATE(created_at) AS date, COUNT(*) AS count
+    const activity = await pool.query(`
+      SELECT DATE(created_at) AS date, COUNT(*)::int AS count
       FROM activity_logs
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+      WHERE created_at >= NOW() - INTERVAL '7 days'
       GROUP BY DATE(created_at)
       ORDER BY date ASC
     `);
 
-    // Top 5 user paling aktif
-    const [topUsers] = await pool.query(`
+    const topUsers = await pool.query(`
       SELECT u.username, u.full_name,
-        COUNT(DISTINCT p.id) AS posts,
-        COUNT(DISTINCT l.id) AS likes_received,
-        COUNT(DISTINCT f.id) AS followers
+        COUNT(DISTINCT p.id)::int AS posts,
+        COUNT(DISTINCT l.id)::int AS likes_received,
+        COUNT(DISTINCT f.id)::int AS followers
       FROM users u
       LEFT JOIN posts p ON p.user_id = u.id AND p.status = 'active'
       LEFT JOIN likes l ON l.post_id = p.id
       LEFT JOIN follows f ON f.following_id = u.id
-      GROUP BY u.id
+      GROUP BY u.id, u.username, u.full_name
       ORDER BY posts DESC, likes_received DESC
       LIMIT 5
     `);
 
-    return success(res, { stats, activity_chart: activity, top_users: topUsers }, 'Dashboard berhasil diambil.');
+    return success(res, { stats: stats.rows[0], activity_chart: activity.rows, top_users: topUsers.rows }, 'Dashboard berhasil diambil.');
   } catch (err) {
     console.error('getDashboard error:', err);
     return error(res, 'Terjadi kesalahan server.', 500);
   }
 };
 
-// ─── GET SEMUA USER ───────────────────────────────────────────
 const getAllUsers = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -56,29 +52,28 @@ const getAllUsers = async (req, res) => {
     const offset = (page - 1) * limit;
 
     const searchParam = `%${search}%`;
-    const [rows] = await pool.query(`
+    const rows = await pool.query(`
       SELECT u.uuid, u.username, u.email, u.full_name, u.role, u.is_active, u.is_banned, u.created_at,
-        COUNT(DISTINCT p.id) AS post_count
+        COUNT(DISTINCT p.id)::int AS post_count
       FROM users u
       LEFT JOIN posts p ON p.user_id = u.id
-      WHERE u.username LIKE ? OR u.email LIKE ? OR u.full_name LIKE ?
-      GROUP BY u.id
+      WHERE u.username ILIKE $1 OR u.email ILIKE $2 OR u.full_name ILIKE $3
+      GROUP BY u.id, u.uuid, u.username, u.email, u.full_name, u.role, u.is_active, u.is_banned, u.created_at
       ORDER BY u.created_at DESC
-      LIMIT ? OFFSET ?
+      LIMIT $4 OFFSET $5
     `, [searchParam, searchParam, searchParam, limit, offset]);
 
-    const [[{ total }]] = await pool.query(
-      'SELECT COUNT(*) AS total FROM users WHERE username LIKE ? OR email LIKE ?',
+    const countResult = await pool.query(
+      'SELECT COUNT(*)::int AS total FROM users WHERE username ILIKE $1 OR email ILIKE $2',
       [searchParam, searchParam]
     );
 
-    return paginate(res, rows, { page, limit, total, total_pages: Math.ceil(total / limit) });
+    return paginate(res, rows.rows, { page, limit, total: countResult.rows[0].total, total_pages: Math.ceil(countResult.rows[0].total / limit) });
   } catch (err) {
     return error(res, 'Terjadi kesalahan server.', 500);
   }
 };
 
-// ─── UPDATE ROLE USER ─────────────────────────────────────────
 const updateUserRole = async (req, res) => {
   try {
     const { uuid } = req.params;
@@ -88,26 +83,25 @@ const updateUserRole = async (req, res) => {
       return error(res, 'Role tidak valid.', 400);
     }
 
-    const [rows] = await pool.query('SELECT id FROM users WHERE uuid = ?', [uuid]);
-    if (rows.length === 0) return error(res, 'User tidak ditemukan.', 404);
+    const rows = await pool.query('SELECT id FROM users WHERE uuid = $1', [uuid]);
+    if (rows.rows.length === 0) return error(res, 'User tidak ditemukan.', 404);
 
-    await pool.query('UPDATE users SET role = ? WHERE uuid = ?', [role, uuid]);
+    await pool.query('UPDATE users SET role = $1 WHERE uuid = $2', [role, uuid]);
     return success(res, null, `Role user berhasil diubah menjadi ${role}.`);
   } catch (err) {
     return error(res, 'Terjadi kesalahan server.', 500);
   }
 };
 
-// ─── BAN / UNBAN USER ─────────────────────────────────────────
 const toggleBanUser = async (req, res) => {
   try {
     const { uuid } = req.params;
-    const [rows] = await pool.query('SELECT id, is_banned, username FROM users WHERE uuid = ?', [uuid]);
-    if (rows.length === 0) return error(res, 'User tidak ditemukan.', 404);
+    const rows = await pool.query('SELECT id, is_banned, username FROM users WHERE uuid = $1', [uuid]);
+    if (rows.rows.length === 0) return error(res, 'User tidak ditemukan.', 404);
 
-    const user = rows[0];
-    const newStatus = user.is_banned ? 0 : 1;
-    await pool.query('UPDATE users SET is_banned = ? WHERE uuid = ?', [newStatus, uuid]);
+    const user = rows.rows[0];
+    const newStatus = !user.is_banned;
+    await pool.query('UPDATE users SET is_banned = $1 WHERE uuid = $2', [newStatus, uuid]);
 
     return success(res, { is_banned: !!newStatus },
       newStatus ? `User @${user.username} berhasil dibanned.` : `User @${user.username} berhasil di-unban.`
@@ -117,7 +111,6 @@ const toggleBanUser = async (req, res) => {
   }
 };
 
-// ─── LOG AKTIVITAS USER ───────────────────────────────────────
 const getUserActivity = async (req, res) => {
   try {
     const { uuid } = req.params;
@@ -125,15 +118,15 @@ const getUserActivity = async (req, res) => {
     const limit = parseInt(req.query.limit) || 30;
     const offset = (page - 1) * limit;
 
-    const [rows] = await pool.query(`
+    const rows = await pool.query(`
       SELECT al.action, al.entity_type, al.entity_id, al.ip_address, al.created_at
       FROM activity_logs al
-      JOIN users u ON u.id = al.user_id AND u.uuid = ?
+      JOIN users u ON u.id = al.user_id AND u.uuid = $1
       ORDER BY al.created_at DESC
-      LIMIT ? OFFSET ?
+      LIMIT $2 OFFSET $3
     `, [uuid, limit, offset]);
 
-    return success(res, rows, 'Log aktivitas berhasil diambil.');
+    return success(res, rows.rows, 'Log aktivitas berhasil diambil.');
   } catch (err) {
     return error(res, 'Terjadi kesalahan server.', 500);
   }

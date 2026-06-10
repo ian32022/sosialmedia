@@ -1,26 +1,14 @@
-/**
- * Auth Controller - Sesuai materi Pertemuan 7
- * 
- * Alur sesuai slide:
- * REGISTER: Client kirim data → validasi → cek duplikat → hash password → simpan ke DB
- * LOGIN   : Client kirim email+password → cek DB → verifyPassword (hash) → signJwt → return token
- */
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const { pool } = require('../config/database');
-const { signJwt } = require('../utils/jwt');  // sesuai nama di slide
+const { signJwt } = require('../utils/jwt');
 const { success, error } = require('../utils/response');
 const { logActivity } = require('../utils/logger');
 
-// ──────────────────────────────────────────────────────────────
-// POST /api/auth/register
-// Client mengirim: username, email, password, full_name
-// ──────────────────────────────────────────────────────────────
 const register = async (req, res) => {
   try {
     const { username, email, password, full_name } = req.body;
 
-    // 1. Validasi input
     if (!username || !email || !password) {
       return error(res, 'Username, email, dan password wajib diisi.', 400);
     }
@@ -35,29 +23,25 @@ const register = async (req, res) => {
       return error(res, 'Username hanya boleh huruf, angka, dan underscore (3-20 karakter).', 400);
     }
 
-    // 2. Cek duplikat ke database
-    const [existing] = await pool.query(
-      'SELECT id FROM users WHERE email = ? OR username = ?',
+    const existing = await pool.query(
+      'SELECT id FROM users WHERE email = $1 OR username = $2',
       [email.toLowerCase(), username.toLowerCase()]
     );
-    if (existing.length > 0) {
+    if (existing.rows.length > 0) {
       return error(res, 'Email atau username sudah digunakan.', 409);
     }
 
-    // 3. Hash password dengan bcrypt (salt rounds = 12)
     const hashedPassword = await bcrypt.hash(password, 12);
     const uuid = uuidv4();
 
-    // 4. Simpan user ke database
-    const [result] = await pool.query(
+    const result = await pool.query(
       `INSERT INTO users (uuid, username, email, password, full_name, role)
-       VALUES (?, ?, ?, ?, ?, 'user')`,
+       VALUES ($1, $2, $3, $4, $5, 'user') RETURNING id`,
       [uuid, username.toLowerCase(), email.toLowerCase(), hashedPassword, full_name || username]
     );
 
-    await logActivity(result.insertId, 'register', 'user', result.insertId, req.ip);
+    await logActivity(result.rows[0].id, 'register', 'user', result.rows[0].id, req.ip);
 
-    // 5. Return response sukses (TANPA token - user harus login dulu)
     return success(res, {
       uuid,
       username: username.toLowerCase(),
@@ -71,33 +55,26 @@ const register = async (req, res) => {
   }
 };
 
-// ──────────────────────────────────────────────────────────────
-// POST /api/auth/login
-// Alur sesuai slide: cek DB → verifyPassword → signJwt → return token
-// ──────────────────────────────────────────────────────────────
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // 1. Validasi input
     if (!email || !password) {
       return error(res, 'Email dan password wajib diisi.', 400);
     }
 
-    // 2. Server mengecek data user ke database
-    const [rows] = await pool.query(
+    const result = await pool.query(
       `SELECT id, uuid, username, email, password, full_name, role, is_active, is_banned
-       FROM users WHERE email = ? LIMIT 1`,
+       FROM users WHERE email = $1 LIMIT 1`,
       [email.toLowerCase()]
     );
 
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       return error(res, 'Email atau password salah.', 401);
     }
 
-    const user = rows[0];
+    const user = result.rows[0];
 
-    // 3. Cek status akun
     if (user.is_banned) {
       return error(res, 'Akun Anda telah dibanned oleh admin.', 403);
     }
@@ -105,16 +82,13 @@ const login = async (req, res) => {
       return error(res, 'Akun Anda tidak aktif.', 403);
     }
 
-    // 4. Server memverifikasi password (hash) - sesuai slide
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return error(res, 'Email atau password salah.', 401);
     }
 
-    // 5. Jika valid, server membuat token JWT menggunakan signJwt
-    //    Token berisi data user: id, username, email, role
     const token = signJwt({
-      sub: user.id,          // subject (id user) - sesuai struktur JWT di slide
+      sub: user.id,
       id: user.id,
       uuid: user.uuid,
       username: user.username,
@@ -124,11 +98,9 @@ const login = async (req, res) => {
 
     await logActivity(user.id, 'login', 'user', user.id, req.ip);
 
-    // 6. Server mengirim token ke client
-    //    Client menyimpan token dan mengirimnya di header Authorization
     return success(res, {
       token,
-      token_type: 'Bearer',               // cara pengiriman: Authorization: Bearer <token>
+      token_type: 'Bearer',
       expires_in: process.env.JWT_EXPIRES_IN || '7d',
       user: {
         id: user.id,

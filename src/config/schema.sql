@@ -125,7 +125,7 @@ CREATE INDEX idx_follows_following  ON follows(following_id);
 CREATE INDEX idx_reports_status ON reports(status);
 CREATE INDEX idx_activity_user  ON activity_logs(user_id);
 
-INSERT INTO users (uuid, username, email, password, full_name, role)
+INSERT IGNORE INTO users (uuid, username, email, password, full_name, role)
 VALUES (
   UUID(),
   'admin',

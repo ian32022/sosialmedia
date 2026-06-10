@@ -1,34 +1,11 @@
-/**
- * Auth Middleware - Sesuai materi Pertemuan 7
- * 
- * Fungsi:
- * - verifyToken   : Client mengirim token pada header Authorization → server memverifikasi
- * - authorize     : Membatasi akses berdasarkan role (exact match)
- * - requireRole   : Membatasi akses berdasarkan hierarki role (admin ≥ moderator ≥ user)
- * - optionalAuth  : Token boleh ada atau tidak (untuk endpoint publik)
- * 
- * Hierarki role:
- *   admin > moderator > user
- *   requireRole('moderator') → admin & moderator diizinkan
- *   requireRole('user')      → semua role diizinkan
- * 
- * Cara client mengirim token (sesuai slide):
- *   Header: Authorization: Bearer <token>
- */
 const { verifyJwt } = require('../utils/jwt');
 const { pool } = require('../config/database');
 const { error } = require('../utils/response');
 
-// Urutan hierarki role (semakin ke kanan semakin tinggi)
 const ROLE_HIERARCHY = ['user', 'moderator', 'admin'];
 
-// ──────────────────────────────────────────────────────────────
-// Middleware: verifyToken
-// Memverifikasi token JWT dari header Authorization
-// ──────────────────────────────────────────────────────────────
 const verifyToken = async (req, res, next) => {
   try {
-    // Ambil token dari header Authorization: Bearer <token>
     const authHeader = req.headers['authorization'];
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -38,9 +15,8 @@ const verifyToken = async (req, res, next) => {
       );
     }
 
-    const token = authHeader.slice(7); // Hapus prefix "Bearer "
+    const token = authHeader.slice(7);
 
-    // Server memverifikasi token (sesuai slide)
     let decoded;
     try {
       decoded = verifyJwt(token);
@@ -51,24 +27,22 @@ const verifyToken = async (req, res, next) => {
       return error(res, 'Token tidak valid.', 401);
     }
 
-    // Cek user masih ada dan aktif di database
-    const [rows] = await pool.query(
+    const result = await pool.query(
       `SELECT id, uuid, username, email, full_name, role, is_active, is_banned
-       FROM users WHERE id = ? LIMIT 1`,
+       FROM users WHERE id = $1 LIMIT 1`,
       [decoded.id]
     );
 
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       return error(res, 'User tidak ditemukan.', 401);
     }
 
-    const user = rows[0];
+    const user = result.rows[0];
 
     if (!user.is_active || user.is_banned) {
       return error(res, 'Akun Anda dinonaktifkan atau dibanned.', 403);
     }
 
-    // Inject data user ke request (bisa diakses di controller)
     req.user = user;
     next();
 
@@ -78,11 +52,6 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
-// ──────────────────────────────────────────────────────────────
-// Middleware: authorize (EXACT match)
-// Membatasi akses berdasarkan role user (harus tepat salah satu)
-// Contoh: authorize('admin') atau authorize('moderator', 'admin')
-// ──────────────────────────────────────────────────────────────
 const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
@@ -98,12 +67,6 @@ const authorize = (...roles) => {
   };
 };
 
-// ──────────────────────────────────────────────────────────────
-// Middleware: requireRole (HIERARCHY-aware)
-// User dengan role di atas minimum yang ditentukan juga diizinkan.
-// Contoh: requireRole('moderator') → admin & moderator diizinkan
-//          requireRole('admin')    → hanya admin
-// ──────────────────────────────────────────────────────────────
 const requireRole = (minimumRole) => {
   return (req, res, next) => {
     if (!req.user) {
@@ -130,25 +93,19 @@ const requireRole = (minimumRole) => {
   };
 };
 
-// ──────────────────────────────────────────────────────────────
-// Middleware: optionalAuth
-// Token tidak wajib, tapi jika ada akan di-decode
-// Untuk endpoint publik yang bisa diakses dengan atau tanpa login
-// ──────────────────────────────────────────────────────────────
 const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.slice(7);
       const decoded = verifyJwt(token);
-      const [rows] = await pool.query(
-        'SELECT id, uuid, username, email, role FROM users WHERE id = ? AND is_active = 1 AND is_banned = 0',
+      const result = await pool.query(
+        'SELECT id, uuid, username, email, role FROM users WHERE id = $1 AND is_active = TRUE AND is_banned = FALSE',
         [decoded.id]
       );
-      if (rows.length > 0) req.user = rows[0];
+      if (result.rows.length > 0) req.user = result.rows[0];
     }
   } catch (_) {
-    // Token invalid diabaikan untuk optional auth
   }
   next();
 };

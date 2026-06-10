@@ -3,6 +3,13 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 
+const uploadBaseDir = () => {
+  if (process.env.VERCEL) {
+    return '/tmp/uploads';
+  }
+  return process.env.UPLOAD_PATH || './uploads';
+};
+
 const ensureDir = (dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 };
@@ -10,7 +17,7 @@ const ensureDir = (dir) => {
 const createStorage = (subfolder) =>
   multer.diskStorage({
     destination: (req, file, cb) => {
-      const dest = path.join(process.env.UPLOAD_PATH || './uploads', subfolder);
+      const dest = path.join(uploadBaseDir(), subfolder);
       ensureDir(dest);
       cb(null, dest);
     },
@@ -30,7 +37,7 @@ const imageFilter = (req, file, cb) => {
   }
 };
 
-const maxSize = parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024; // 5MB
+const maxSize = parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024;
 
 const uploadPostImage = multer({
   storage: createStorage('images'),
@@ -41,7 +48,7 @@ const uploadPostImage = multer({
 const uploadAvatar = multer({
   storage: createStorage('avatars'),
   fileFilter: imageFilter,
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB untuk avatar
+  limits: { fileSize: 2 * 1024 * 1024 },
 }).single('avatar');
 
 const handleUploadError = (uploadFn) => (req, res, next) => {
@@ -69,7 +76,7 @@ const uploadStoryMedia = multer({
       cb(new Error('Format file tidak didukung. Gunakan JPG, PNG, GIF, WEBP, MP4, atau MOV.'), false);
     }
   },
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  limits: { fileSize: 50 * 1024 * 1024 },
 }).single('media');
 
 const uploadChatMedia = multer({
@@ -83,7 +90,7 @@ const uploadChatMedia = multer({
       cb(new Error('Format file tidak didukung.'), false);
     }
   },
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  limits: { fileSize: 20 * 1024 * 1024 },
 }).single('media');
 
 module.exports = {

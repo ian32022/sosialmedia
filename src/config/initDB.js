@@ -1,76 +1,46 @@
-const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
-const fs = require('fs');
-const path = require('path');
-
-const DB_CONFIG = {
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT) || 3306,
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-};
-
-const DB_NAME = process.env.DB_NAME || 'social_media_db';
-
-const SCHEMA_FILES = [
-  'schema.sql',
-  'schema_hashtags.sql',
-  'schema_chat.sql',
-  'schema_notifications.sql',
-  'schema_stories.sql',
-];
+const { pool } = require('./database');
 
 const initDatabase = async () => {
-  let connection;
   try {
-    connection = await mysql.createConnection(DB_CONFIG);
-
-    await connection.query(
-      `CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
-    );
-    await connection.query(`USE \`${DB_NAME}\``);
-
-    for (const file of SCHEMA_FILES) {
-      const filePath = path.join(__dirname, file);
-      if (!fs.existsSync(filePath)) continue;
-
-      const sql = fs.readFileSync(filePath, 'utf8');
-      const statements = sql
-        .split(';')
-        .map(s => s.trim())
-        .filter(s => s.length > 0 && !s.startsWith('--'));
-
-      for (const stmt of statements) {
-        try {
-          await connection.query(stmt);
-        } catch (err) {
-          if (err.code === 'ER_TABLE_EXISTS_ERROR' || err.code === 'ER_DUP_ENTRY') continue;
-          console.warn(`[InitDB] ${err.message}`);
-        }
-      }
+    if (process.env.VERCEL) {
+      console.log('Vercel environment — skipping DB init.');
+      return;
     }
 
-    const [rows] = await connection.query(
-      'SELECT id FROM users WHERE email = ?',
-      ['admin@socialmedia.com']
+    try {
+      await pool.query('SELECT 1');
+    } catch (connErr) {
+      console.warn('Database not reachable, skipping init:', connErr.message);
+      return;
+    }
+
+    const typeResult = await pool.query("SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') AS exists");
+    const typesExist = typeResult.rows[0].exists;
+
+    if (!typesExist) {
+      console.log('Types/Tables not found. Please run src/config/supabase-schema.sql in Supabase SQL Editor.');
+      console.log('Skipping auto-init — schema must be applied manually via Supabase dashboard.');
+      return;
+    }
+
+    const result = await pool.query(
+      "SELECT id FROM users WHERE email = 'admin@socialmedia.com'"
     );
 
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       const hashedPassword = await bcrypt.hash('Admin@123', 12);
-      await connection.query(
+      await pool.query(
         `INSERT INTO users (uuid, username, email, password, full_name, role)
-         VALUES (UUID(), ?, ?, ?, ?, ?)`,
-        ['admin', 'admin@socialmedia.com', hashedPassword, 'Super Admin', 'admin']
+         VALUES (gen_random_uuid(), 'admin', 'admin@socialmedia.com', $1, 'Super Admin', 'admin')`,
+        [hashedPassword]
       );
+      console.log('Admin account seeded: admin@socialmedia.com');
     }
 
-    console.log('✅ Database initialized');
-    console.log('✅ Admin account ready: admin@socialmedia.com');
+    console.log('Database initialized');
   } catch (error) {
-    console.error('❌ Database initialization failed:', error.message);
-    throw error;
-  } finally {
-    if (connection) await connection.end();
+    console.warn('Database initialization skipped:', error.message);
   }
 };
 

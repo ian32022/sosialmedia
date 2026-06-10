@@ -1,4 +1,3 @@
-
 require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
@@ -10,7 +9,6 @@ const initDatabase = require('./src/config/initDB');
 
 const app = express();
 
-
 app.use(helmet());
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
@@ -21,27 +19,18 @@ app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
+const uploadsDir = process.env.VERCEL ? '/tmp/uploads' : (process.env.UPLOAD_PATH || './uploads');
+app.use('/uploads', express.static(path.resolve(uploadsDir)));
 
 app.use('/api/auth',    require('./src/routes/authRoutes'));
-
-
 app.use('/api/users',   require('./src/routes/userRoutes'));
-
-
 app.use('/api/posts',   require('./src/routes/postRoutes'));
-
-
 app.use('/api/reports', require('./src/routes/reportRoutes'));
-
 app.use('/api/admin',   require('./src/routes/adminRoutes'));
-
 app.use('/api/stories',       require('./src/routes/storyRoutes'));
 app.use('/api/notifications', require('./src/routes/notificationRoutes'));
 app.use('/api/chat',          require('./src/routes/chatRoutes'));
 app.use('/api/hashtags',      require('./src/routes/hashtagRoutes'));
-
 
 app.get('/', (req, res) => {
   res.json({
@@ -70,14 +59,12 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-
 app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: `Endpoint ${req.method} ${req.originalUrl} tidak ditemukan.`,
   });
 });
-
 
 app.use((err, req, res, next) => {
   console.error('[Unhandled Error]:', err);
@@ -88,7 +75,6 @@ app.use((err, req, res, next) => {
       : err.message,
   });
 });
-
 
 const PORT = process.env.PORT || 3000;
 
@@ -105,6 +91,8 @@ const start = async () => {
   });
 };
 
-start();
+if (!process.env.VERCEL) {
+  start();
+}
 
 module.exports = app;

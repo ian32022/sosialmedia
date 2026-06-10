@@ -7,11 +7,13 @@
     "start": "node app.js",
     "dev": "nodemon app.js",
     "seed": "node seeders/adminSeeder.js",
-    "fix:admin": "node seeders/fixAdminPassword.js"
+    "fix:admin": "node seeders/fixAdminPassword.js",
+    "vercel-build": "echo 'Build complete'"
   },
   "keywords": [
     "express",
-    "mysql",
+    "postgresql",
+    "supabase",
     "jwt",
     "social-media",
     "rest-api"
@@ -27,7 +29,7 @@
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.1",
     "multer": "^2.1.1",
-    "mysql2": "^3.22.3",
+    "pg": "^8.13.3",
     "uuid": "^14.0.0"
   },
   "devDependencies": {

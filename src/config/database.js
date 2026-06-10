@@ -1,27 +1,20 @@
-const mysql = require('mysql2/promise');
+const { Pool } = require('pg');
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 3306,
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'social_media_db',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-  timezone: process.env.DB_TIMEZONE || '+00:00',
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${encodeURIComponent(process.env.DB_PASSWORD || '')}@${process.env.DB_HOST}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || 'postgres'}`,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 });
 
 const testConnection = async () => {
   try {
-    const connection = await pool.getConnection();
-    console.log('✅ Database MySQL berhasil terhubung');
-    connection.release();
+    await pool.query('SELECT NOW()');
+    console.log('Database Supabase (PostgreSQL) berhasil terhubung');
   } catch (error) {
-    console.error('❌ Koneksi database gagal:', error.message);
-    console.error('Error code:', error.code);        // tambah ini
-    console.error('Error errno:', error.errno);      // tambah ini
-    process.exit(1);
+    console.warn('Koneksi database gagal:', error.message);
+    console.warn('Server tetap jalan, query akan error sampai DB tersedia.');
   }
 };
 

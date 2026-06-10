@@ -3,7 +3,7 @@ const { pool } = require('../config/database');
 const logActivity = async (userId, action, entityType = null, entityId = null, ipAddress = null) => {
   try {
     await pool.query(
-      'INSERT INTO activity_logs (user_id, action, entity_type, entity_id, ip_address) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO activity_logs (user_id, action, entity_type, entity_id, ip_address) VALUES ($1, $2, $3, $4, $5)',
       [userId, action, entityType, entityId, ipAddress]
     );
   } catch (_) {}

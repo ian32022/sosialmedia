@@ -6,17 +6,16 @@ const seed = async () => {
   try {
     console.log('⏳ Menjalankan seeder...\n');
 
-    // ─── Admin ───────────────────────────────────────────────
-    const [adminRows] = await pool.query(
-      'SELECT id FROM users WHERE email = ?',
+    const adminResult = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
       ['admin@socialmedia.com']
     );
 
-    if (adminRows.length === 0) {
+    if (adminResult.rows.length === 0) {
       const hashed = await bcrypt.hash('Admin@123', 12);
       await pool.query(
         `INSERT INTO users (uuid, username, email, password, full_name, role, is_active, is_banned)
-         VALUES (?, ?, ?, ?, ?, 'admin', 1, 0)`,
+         VALUES ($1, $2, $3, $4, $5, 'admin', TRUE, FALSE)`,
         [uuidv4(), 'admin', 'admin@socialmedia.com', hashed, 'Super Admin']
       );
       console.log('✅ Admin berhasil dibuat: admin@socialmedia.com / Admin@123');
@@ -24,17 +23,16 @@ const seed = async () => {
       console.log('ℹ️  Admin sudah ada, dilewati.');
     }
 
-    // ─── Moderator ───────────────────────────────────────────
-    const [modRows] = await pool.query(
-      'SELECT id FROM users WHERE email = ?',
+    const modResult = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
       ['moderator@socialmedia.com']
     );
 
-    if (modRows.length === 0) {
+    if (modResult.rows.length === 0) {
       const hashed = await bcrypt.hash('Moderator@123', 12);
       await pool.query(
         `INSERT INTO users (uuid, username, email, password, full_name, role, is_active, is_banned)
-         VALUES (?, ?, ?, ?, ?, 'moderator', 1, 0)`,
+         VALUES ($1, $2, $3, $4, $5, 'moderator', TRUE, FALSE)`,
         [uuidv4(), 'moderator', 'moderator@socialmedia.com', hashed, 'Moderator Satu']
       );
       console.log('✅ Moderator berhasil dibuat: moderator@socialmedia.com / Moderator@123');

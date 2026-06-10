@@ -1,0 +1,777 @@
+{
+  "info": {
+    "name": "Social Media API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3000" },
+    { "key": "token", "value": "" },
+    { "key": "postUuid", "value": "" },
+    { "key": "commentId", "value": "" },
+    { "key": "storyUuid", "value": "" },
+    { "key": "conversationUuid", "value": "" },
+    { "key": "messageId", "value": "" },
+    { "key": "notificationUuid", "value": "" },
+    { "key": "reportId", "value": "" },
+    { "key": "adminUserUuid", "value": "" },
+    { "key": "targetUsername", "value": "johndoe" },
+    { "key": "currentRole", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "try {",
+                "  var json = pm.response.json();",
+                "  if (json.success && json.data) {",
+                "    pm.collectionVariables.set('currentRole', json.data.role || 'user');",
+                "    console.log('Role:', pm.collectionVariables.get('currentRole'));",
+                "    if (json.data.token) {",
+                "      pm.collectionVariables.set('token', json.data.token);",
+                "      console.log('token saved:', json.data.token);",
+                "    }",
+                "  }",
+                "} catch (e) {",
+                "  console.error('Failed:', e);",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/auth/register",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"johndoe\",\n  \"email\": \"johndoe@example.com\",\n  \"password\": \"password123\",\n  \"full_name\": \"John Doe\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login as User",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "try {",
+                "  var json = pm.response.json();",
+                "  if (json.success && json.data && json.data.token) {",
+                "    pm.collectionVariables.set('token', json.data.token);",
+                "    pm.collectionVariables.set('currentRole', json.data.user.role);",
+                "    console.log('Role:', json.data.user.role);",
+                "    console.log('token saved:', json.data.token);",
+                "  }",
+                "} catch (e) {",
+                "  console.error('Failed:', e);",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/auth/login",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"johndoe@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login as Admin",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "try {",
+                "  var json = pm.response.json();",
+                "  if (json.success && json.data && json.data.token) {",
+                "    pm.collectionVariables.set('token', json.data.token);",
+                "    pm.collectionVariables.set('currentRole', json.data.user.role);",
+                "    console.log('Role:', json.data.user.role);",
+                "    console.log('token saved:', json.data.token);",
+                "  }",
+                "} catch (e) {",
+                "  console.error('Failed:', e);",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/auth/login",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@socialmedia.com\",\n  \"password\": \"Admin@123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login as Moderator",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "try {",
+                "  var json = pm.response.json();",
+                "  if (json.success && json.data && json.data.token) {",
+                "    pm.collectionVariables.set('token', json.data.token);",
+                "    pm.collectionVariables.set('currentRole', json.data.user.role);",
+                "    console.log('Role:', json.data.user.role);",
+                "    console.log('token saved:', json.data.token);",
+                "  }",
+                "} catch (e) {",
+                "  console.error('Failed:', e);",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/auth/login",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"moderator@socialmedia.com\",\n  \"password\": \"Moderator@123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {"name": "Get Profile (self)", "request": {"method": "GET","url": "{{base_url}}/api/users/profile","header": [{"key": "Authorization","value": "Bearer {{token}}"}]}},
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url}}/api/users/profile",
+            "header": [
+              {"key": "Content-Type","value": "application/json"},
+              {"key": "Authorization","value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"John Doe Updated\",\n  \"bio\": \"Seorang developer\",\n  \"website\": \"https://johndoe.com\"\n}"
+            }
+          }
+        },
+        {"name": "Change Password", "request": {"method": "PUT","url": "{{base_url}}/api/users/password","header": [{"key": "Content-Type","value": "application/json"},{"key": "Authorization","value": "Bearer {{token}}"}],"body": {"mode": "raw","raw": "{\n  \"old_password\": \"password123\",\n  \"new_password\": \"newpassword456\"\n}"}}},
+        {"name": "Delete Account", "request": {"method": "DELETE","url": "{{base_url}}/api/users/account","header": [{"key": "Authorization","value": "Bearer {{token}}"}]}},
+        {"name": "Get Profile (by username)", "request": {"method": "GET","url": "{{base_url}}/api/users/{{targetUsername}}"}},
+        {"name": "Follow / Unfollow", "request": {"method": "POST","url": "{{base_url}}/api/users/{{targetUsername}}/follow","header": [{"key": "Authorization","value": "Bearer {{token}}"}]}},
+        {"name": "Get Followers", "request": {"method": "GET","url": "{{base_url}}/api/users/{{targetUsername}}/followers"}},
+        {"name": "Get Following", "request": {"method": "GET","url": "{{base_url}}/api/users/{{targetUsername}}/following"}}
+      ]
+    },
+    {
+      "name": "Posts",
+      "item": [
+        {
+          "name": "Create Post",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "try {",
+                "  var json = pm.response.json();",
+                "  if (json.success && json.data && json.data.uuid) {",
+                "    pm.collectionVariables.set('postUuid', json.data.uuid);",
+                "    console.log('postUuid saved:', json.data.uuid);",
+                "  }",
+                "} catch (e) {",
+                "  console.error('Failed to save postUuid:', e);",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/posts",
+            "header": [
+              {"key": "Content-Type","value": "application/json"},
+              {"key": "Authorization","value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Ini adalah postingan pertama saya!\",\n  \"media_url\": \"https://example.com/image.jpg\",\n  \"visibility\": \"public\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get All Posts",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "try {",
+                "  var json = pm.response.json();",
+                "  if (json.success && json.data && json.data.length > 0 && json.data[0].uuid) {",
+                "    pm.collectionVariables.set('postUuid', json.data[0].uuid);",
+                "    console.log('postUuid saved from list:', json.data[0].uuid);",
+                "  }",
+                "} catch (e) {",
+                "  console.error('Failed to save postUuid:', e);",
+                "}"
+              ]
+            }
+          }],
+          "request": {"method": "GET","url": "{{base_url}}/api/posts"}
+        },
+        {"name": "Get Feed", "request": {"method": "GET","url": "{{base_url}}/api/posts/feed","header": [{"key": "Authorization","value": "Bearer {{token}}"}]}},
+        {
+          "name": "Get Post by UUID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/posts/{{postUuid}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "posts", "{{postUuid}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Post",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{base_url}}/api/posts/{{postUuid}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "posts", "{{postUuid}}"]
+            },
+            "header": [
+              {"key": "Content-Type","value": "application/json"},
+              {"key": "Authorization","value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Konten yang sudah diperbarui\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Post",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/api/posts/{{postUuid}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "posts", "{{postUuid}}"]
+            },
+            "header": [{"key": "Authorization","value": "Bearer {{token}}"}]
+          }
+        },
+        {
+          "name": "Toggle Like",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/posts/{{postUuid}}/like",
+              "host": ["{{base_url}}"],
+              "path": ["api", "posts", "{{postUuid}}", "like"]
+            },
+            "header": [{"key": "Authorization","value": "Bearer {{token}}"}]
+          }
+        },
+        {
+          "name": "Toggle Bookmark",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/posts/{{postUuid}}/bookmark",
+              "host": ["{{base_url}}"],
+              "path": ["api", "posts", "{{postUuid}}", "bookmark"]
+            },
+            "header": [{"key": "Authorization","value": "Bearer {{token}}"}]
+          }
+        },
+        {"name": "Get Bookmarks", "request": {"method": "GET","url": "{{base_url}}/api/posts/bookmarks","header": [{"key": "Authorization","value": "Bearer {{token}}"}]}},
+        {
+          "name": "Get Comments",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "try {",
+                "  var json = pm.response.json();",
+                "  if (json.success && json.data && json.data.length > 0 && json.data[0].id) {",
+                "    pm.collectionVariables.set('commentId', json.data[0].id);",
+                "    console.log('commentId saved from list:', json.data[0].id);",
+                "  }",
+                "} catch (e) {",
+                "  console.error('Failed to save commentId:', e);",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/posts/{{postUuid}}/comments",
+              "host": ["{{base_url}}"],
+              "path": ["api", "posts", "{{postUuid}}", "comments"]
+            }
+          }
+        },
+        {
+          "name": "Add Comment",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "try {",
+                "  var json = pm.response.json();",
+                "  if (json.success && json.data && json.data.id) {",
+                "    pm.collectionVariables.set('commentId', json.data.id);",
+                "    console.log('commentId saved:', json.data.id);",
+                "  }",
+                "} catch (e) {",
+                "  console.error('Failed to save commentId:', e);",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/posts/{{postUuid}}/comments",
+            "header": [{"key": "Content-Type","value": "application/json"},{"key": "Authorization","value": "Bearer {{token}}"}],
+            "body": {"mode": "raw","raw": "{\n  \"content\": \"Keren banget!\"\n}"}
+          }
+        },
+        {
+          "name": "Update Comment",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{base_url}}/api/posts/comments/{{commentId}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "posts", "comments", "{{commentId}}"]
+            },
+            "header": [{"key": "Content-Type","value": "application/json"},{"key": "Authorization","value": "Bearer {{token}}"}],
+            "body": {"mode": "raw","raw": "{\n  \"content\": \"Update komentar\"\n}"}
+          }
+        },
+        {
+          "name": "Delete Comment",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/api/posts/comments/{{commentId}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "posts", "comments", "{{commentId}}"]
+            },
+            "header": [{"key": "Authorization","value": "Bearer {{token}}"}]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stories",
+      "item": [
+        {
+          "name": "Create Story",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "try {",
+                "  var json = pm.response.json();",
+                "  if (json.success && json.data && json.data.uuid) {",
+                "    pm.collectionVariables.set('storyUuid', json.data.uuid);",
+                "    console.log('storyUuid saved:', json.data.uuid);",
+                "  }",
+                "} catch (e) {",
+                "  console.error('Failed to save storyUuid:', e);",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/stories",
+            "header": [
+              {"key": "Content-Type","value": "application/json"},
+              {"key": "Authorization","value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"media_url\": \"https://example.com/story.jpg\",\n  \"media_type\": \"image\",\n  \"caption\": \"Story hari ini!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Following Stories",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "try {",
+                "  var json = pm.response.json();",
+                "  if (json.success && json.data && json.data.length > 0 && json.data[0].uuid) {",
+                "    pm.collectionVariables.set('storyUuid', json.data[0].uuid);",
+                "    console.log('storyUuid saved from list:', json.data[0].uuid);",
+                "  }",
+                "} catch (e) {",
+                "  console.error('Failed to save storyUuid:', e);",
+                "}"
+              ]
+            }
+          }],
+          "request": {"method": "GET","url": "{{base_url}}/api/stories","header": [{"key": "Authorization","value": "Bearer {{token}}"}]}
+        },
+        {"name": "Get User Stories", "request": {"method": "GET","url": "{{base_url}}/api/stories/user/{{targetUsername}}"}},
+        {
+          "name": "Get Story",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/stories/{{storyUuid}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "stories", "{{storyUuid}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Story",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/api/stories/{{storyUuid}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "stories", "{{storyUuid}}"]
+            },
+            "header": [{"key": "Authorization","value": "Bearer {{token}}"}]
+          }
+        },
+        {
+          "name": "View Story",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/stories/{{storyUuid}}/view",
+              "host": ["{{base_url}}"],
+              "path": ["api", "stories", "{{storyUuid}}", "view"]
+            },
+            "header": [{"key": "Authorization","value": "Bearer {{token}}"}]
+          }
+        },
+        {
+          "name": "Get Story Views",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/stories/{{storyUuid}}/views",
+              "host": ["{{base_url}}"],
+              "path": ["api", "stories", "{{storyUuid}}", "views"]
+            },
+            "header": [{"key": "Authorization","value": "Bearer {{token}}"}]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Create Report",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "try {",
+                "  var json = pm.response.json();",
+                "  if (json.success && json.data && json.data.id) {",
+                "    pm.collectionVariables.set('reportId', json.data.id);",
+                "    console.log('reportId saved:', json.data.id);",
+                "  }",
+                "} catch (e) {",
+                "  console.error('Failed to save reportId:', e);",
+                "}"
+              ]
+            }
+          }],
+          "request": {"method": "POST","url": "{{base_url}}/api/reports","header": [{"key": "Content-Type","value": "application/json"},{"key": "Authorization","value": "Bearer {{token}}"}],"body": {"mode": "raw","raw": "{\n  \"target_type\": \"post\",\n  \"target_uuid\": \"{{postUuid}}\",\n  \"reason\": \"spam\"\n}"}}
+        },
+        {
+          "name": "Get Reports (moderator/admin)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "try {",
+                "  var json = pm.response.json();",
+                "  if (json.success && json.data && json.data.length > 0 && json.data[0].id) {",
+                "    pm.collectionVariables.set('reportId', json.data[0].id);",
+                "    console.log('reportId saved from list:', json.data[0].id);",
+                "  }",
+                "} catch (e) {",
+                "  console.error('Failed to save reportId:', e);",
+                "}"
+              ]
+            }
+          }],
+          "request": {"method": "GET","url": "{{base_url}}/api/reports","header": [{"key": "Authorization","value": "Bearer {{token}}"}]}
+        },
+        {
+          "name": "Review Report (moderator/admin)",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{base_url}}/api/reports/{{reportId}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reports", "{{reportId}}"]
+            },
+            "header": [{"key": "Content-Type","value": "application/json"},{"key": "Authorization","value": "Bearer {{token}}"}],
+            "body": {"mode": "raw","raw": "{\n  \"action\": \"hide_post\",\n  \"note\": \"Konten tidak pantas\"\n}"}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {"name": "Get Dashboard", "request": {"method": "GET","url": "{{base_url}}/api/admin/dashboard","header": [{"key": "Authorization","value": "Bearer {{token}}"}]}},
+        {
+          "name": "Get All Users",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "try {",
+                "  var json = pm.response.json();",
+                "  if (json.success && json.data && json.data.length > 0 && json.data[0].uuid) {",
+                "    pm.collectionVariables.set('adminUserUuid', json.data[0].uuid);",
+                "    console.log('adminUserUuid saved:', json.data[0].uuid);",
+                "  }",
+                "} catch (e) {",
+                "  console.error('Failed to save adminUserUuid:', e);",
+                "}"
+              ]
+            }
+          }],
+          "request": {"method": "GET","url": "{{base_url}}/api/admin/users","header": [{"key": "Authorization","value": "Bearer {{token}}"}]}
+        },
+        {
+          "name": "Update User Role",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{adminUserUuid}}/role",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users", "{{adminUserUuid}}", "role"]
+            },
+            "header": [{"key": "Content-Type","value": "application/json"},{"key": "Authorization","value": "Bearer {{token}}"}],
+            "body": {"mode": "raw","raw": "{\n  \"role\": \"moderator\"\n}"}
+          }
+        },
+        {
+          "name": "Ban / Unban User",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{adminUserUuid}}/ban",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users", "{{adminUserUuid}}", "ban"]
+            },
+            "header": [
+              {"key": "Content-Type","value": "application/json"},
+              {"key": "Authorization","value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"is_banned\": true,\n  \"reason\": \"Melanggar aturan komunitas\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete User (admin)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{adminUserUuid}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users", "{{adminUserUuid}}"]
+            },
+            "header": [{"key": "Authorization","value": "Bearer {{token}}"}]
+          }
+        },
+        {
+          "name": "Get User Activity",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{adminUserUuid}}/activity",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users", "{{adminUserUuid}}", "activity"]
+            },
+            "header": [{"key": "Authorization","value": "Bearer {{token}}"}]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get Notifications",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "try {",
+                "  var json = pm.response.json();",
+                "  if (json.success && json.data && json.data.length > 0 && json.data[0].uuid) {",
+                "    pm.collectionVariables.set('notificationUuid', json.data[0].uuid);",
+                "    console.log('notificationUuid saved:', json.data[0].uuid);",
+                "  }",
+                "} catch (e) {",
+                "  console.error('Failed to save notificationUuid:', e);",
+                "}"
+              ]
+            }
+          }],
+          "request": {"method": "GET","url": "{{base_url}}/api/notifications","header": [{"key": "Authorization","value": "Bearer {{token}}"}]}
+        },
+        {"name": "Get Unread Count", "request": {"method": "GET","url": "{{base_url}}/api/notifications/unread-count","header": [{"key": "Authorization","value": "Bearer {{token}}"}]}},
+        {"name": "Mark All Read", "request": {"method": "PUT","url": "{{base_url}}/api/notifications/read","header": [{"key": "Authorization","value": "Bearer {{token}}"}]}},
+        {
+          "name": "Delete Notification",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/api/notifications/{{notificationUuid}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notifications", "{{notificationUuid}}"]
+            },
+            "header": [{"key": "Authorization","value": "Bearer {{token}}"}]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "item": [
+        {
+          "name": "Start Conversation",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "try {",
+                "  var json = pm.response.json();",
+                "  if (json.success && json.data && json.data.conversation_uuid) {",
+                "    pm.collectionVariables.set('conversationUuid', json.data.conversation_uuid);",
+                "    console.log('conversationUuid saved:', json.data.conversation_uuid);",
+                "  }",
+                "} catch (e) {",
+                "  console.error('Failed to save conversationUuid:', e);",
+                "}"
+              ]
+            }
+          }],
+          "request": {"method": "POST","url": "{{base_url}}/api/chat/start","header": [{"key": "Content-Type","value": "application/json"},{"key": "Authorization","value": "Bearer {{token}}"}],"body": {"mode": "raw","raw": "{\n  \"username\": \"{{targetUsername}}\"\n}"}}
+        },
+        {
+          "name": "Get Conversations",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "try {",
+                "  var json = pm.response.json();",
+                "  if (json.success && json.data && json.data.length > 0 && json.data[0].uuid) {",
+                "    pm.collectionVariables.set('conversationUuid', json.data[0].uuid);",
+                "    console.log('conversationUuid saved from list:', json.data[0].uuid);",
+                "  }",
+                "} catch (e) {",
+                "  console.error('Failed to save conversationUuid:', e);",
+                "}"
+              ]
+            }
+          }],
+          "request": {"method": "GET","url": "{{base_url}}/api/chat/conversations","header": [{"key": "Authorization","value": "Bearer {{token}}"}]}
+        },
+        {
+          "name": "Get Messages",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/chat/conversations/{{conversationUuid}}/messages",
+              "host": ["{{base_url}}"],
+              "path": ["api", "chat", "conversations", "{{conversationUuid}}", "messages"]
+            },
+            "header": [{"key": "Authorization","value": "Bearer {{token}}"}]
+          }
+        },
+        {
+          "name": "Send Message",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "try {",
+                "  var json = pm.response.json();",
+                "  if (json.success && json.data && json.data.uuid) {",
+                "    pm.collectionVariables.set('messageId', json.data.uuid);",
+                "    console.log('messageId saved:', json.data.uuid);",
+                "  }",
+                "} catch (e) {",
+                "  console.error('Failed to save messageId:', e);",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/chat/conversations/{{conversationUuid}}/messages",
+              "host": ["{{base_url}}"],
+              "path": ["api", "chat", "conversations", "{{conversationUuid}}", "messages"]
+            },
+            "header": [
+              {"key": "Content-Type","value": "application/json"},
+              {"key": "Authorization","value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Halo, apa kabar?\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hashtags",
+      "item": [
+        {"name": "Get Trending Hashtags", "request": {"method": "GET","url": "{{base_url}}/api/hashtags/trending"}},
+        {"name": "Search Hashtags", "request": {"method": "GET","url": "{{base_url}}/api/hashtags/search?q=love"}},
+        {
+          "name": "Get Posts by Hashtag",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/hashtags/love/posts",
+              "host": ["{{base_url}}"],
+              "path": ["api", "hashtags", "love", "posts"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "System",
+      "item": [
+        {"name": "Home", "request": {"method": "GET","url": "{{base_url}}/"}},
+        {"name": "Health Check", "request": {"method": "GET","url": "{{base_url}}/health"}}
+      ]
+    }
+  ]
+}

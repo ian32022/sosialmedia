@@ -1,0 +1,8 @@
+.env
+.git
+README.md
+node_modules
+postman_collection.json
+seeders
+uploads
+setup.js
